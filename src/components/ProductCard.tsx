@@ -1,51 +1,41 @@
-import { Share2, ShoppingCart } from 'lucide-react';
-import { Product } from '../data';
+import React from 'react';
+import { ShoppingBag, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-interface ProductCardProps {
-  product: Product;
-  onAddToCart: (p: Product) => void;
-}
-
-export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
+export function ProductCard({ product, onAddToCart }: any) {
   return (
     <motion.div 
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="premium-card flex flex-col h-full"
+      className="premium-card glass"
+      whileTap={{ scale: 0.97 }}
+      style={{ display: 'flex', flexDirection: 'column', height: '100%', borderRadius: '24px', overflow: 'hidden' }}
     >
-      <div className="relative aspect-square overflow-hidden">
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', overflow: 'hidden' }}>
         <img 
           src={product.image} 
-          alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
         />
-        <div className="absolute top-4 right-4 glass p-2 rounded-full cursor-pointer hover:bg-white/10 transition-colors">
-          <Share2 size={18} className="text-white" />
-        </div>
+        <button className="glass" style={{ position: 'absolute', top: '12px', right: '12px', border: 'none', borderRadius: '50%', padding: '8px' }}>
+          <Heart size={16} color="white" />
+        </button>
       </div>
       
-      <div className="p-4 flex flex-col flex-grow">
-        <span className="text-xs font-semibold text-brand-secondary uppercase tracking-wider mb-1">
-          {product.category}
-        </span>
-        <h3 className="text-lg font-bold text-white mb-2 leading-tight">
-          {product.name}
-        </h3>
-        
-        <div className="mt-auto flex items-center justify-between">
-          <span className="text-xl font-bold font-display text-white">
-            ${product.price}
-          </span>
-          <button 
+      <div style={{ padding: '14px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <div>
+          <h3 className="font-display" style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px' }}>{product.name}</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{product.category}</p>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
+          <span style={{ fontWeight: 'bold', color: 'var(--accent-gold)' }}>${product.price}</span>
+          <motion.button 
+            whileTap={{ scale: 0.8 }}
             onClick={() => onAddToCart(product)}
-            className="glass p-3 rounded-xl hover:bg-white/10 active:scale-90 transition-all text-brand-primary"
+            className="btn-brand" 
+            style={{ width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <ShoppingCart size={20} />
-          </button>
+            <ShoppingBag size={16} />
+          </motion.button>
         </div>
       </div>
     </motion.div>
   );
-};
+}
