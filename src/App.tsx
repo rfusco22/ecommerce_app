@@ -1,264 +1,398 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  Home, 
-  Search, // Usaremos este nombre en todo el archivo
-  ShoppingBag, 
-  User, 
-  Bell, 
-  Menu, 
-  X, 
-  Settings, 
-  CreditCard, 
-  Package, 
-  ChevronRight, 
-  LogOut 
-} from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PRODUCTS, CATEGORIES } from './data';
+import { 
+  Home, Search, ShoppingBag, User, Bell, Package, 
+  Search as SearchIcon, Settings, LogOut, CreditCard 
+} from 'lucide-react';
+
+// Componentes
 import { ProductCard } from './components/ProductCard';
-import type { Product } from "./data";
+import { Cart } from './components/Cart';
+import { Checkout } from './components/Checkout';
+import { ProductDetail } from './components/ProductDetail';
+import { Offer } from './components/Offer';
+import { OrdersView } from './components/OrdersView';
+import { OrderDetail } from './components/OrderDetail';
+import { NotificationsModal } from './components/NotificationsModal';
+import { SearchView } from './components/SearchView'; // Importar
+
+// Datos
+import { PRODUCTS } from './data';
 import './App.css';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
-  const [selectedCat, setSelectedCat] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [cart, setCart] = useState<Product[]>([]);
+  const [cart, setCart] = useState<any[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const updateQuantity = (id: string, delta: number) => {
+    setCart(prev => prev.map(item => {
+      if (item.id === id) {
+        const newQty = Math.max(1, item.quantity + delta);
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    }));
+  };
 
-  const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter(p => {
-      const matchesCategory = selectedCat === 'All' || p.category === selectedCat;
-      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
+  const removeFromCart = (id: string) => {
+    setCart(prev => prev.filter(item => item.id !== id));
+  };
+  
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+
+  // --- BLOQUEO DE SCROLL PARA MODALES Y DETALLES ---
+  useEffect(() => {
+    // Añadimos isNotificationsOpen a la condición
+    if (isCartOpen || selectedProduct || selectedOrder || isNotificationsOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.style.overflow = 'unset';
+      document.body.classList.remove('modal-open');
+    }
+  }, [isCartOpen, selectedProduct, selectedOrder, isNotificationsOpen]); // <--- No olvides añadirla aquí también
+
+
+  const addToCart = (product: any) => {
+    setCart(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) {
+        return prev.map(item => 
+          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [...prev, { ...product, quantity: 1 }];
     });
-  }, [selectedCat, searchQuery]);
 
-  // 1. Añade este estado
-  const [isAdding, setIsAdding] = useState(false);
+    // --- LÓGICA DEL TOAST ---
+    setShowAddedToast(true);
+    
+    // Se apaga solo tras 2 segundos
+    setTimeout(() => {
+      setShowAddedToast(false);
+    }, 2000);
+  };
 
-  // 2. Modifica tu función addToCart
-  const addToCart = (product: Product) => {
-    setCart([...cart, product]);
-    setIsAdding(true);
-    // Efecto de rebote sutil en el botón central mediante el estado
-    setTimeout(() => setIsAdding(false), 1000);
+  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const [showAddedToast, setShowAddedToast] = useState(false);
+
+  // Estado para guardar solo los IDs de los productos favoritos
+  const [wishlist, setWishlist] = useState<string[]>([]); 
+
+  // Función para alternar favorito (añadir/quitar)
+  const toggleWishlist = (productId: string) => {
+    setWishlist(prev => 
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
   };
 
   return (
     <div className="app-container">
       
-      {/* Header Premium */}
-      <header className="main-header-premium glass">
-        <div className="header-left-content">
-          <motion.div whileTap={{ scale: 0.9 }} className="brand-avatar"><span>RF</span></motion.div>
-          <div className="header-titles">
-            <span className="label-top">FuscoDev</span>
-            <h1 className="title-main">Premium Store</h1>
+      {/* --- HEADER (Se oculta en Checkout, Ofertas y Detalle de Orden) --- */}
+      {activeTab === 'home' && !selectedOrder && !selectedProduct && (
+        <header className="main-header-premium">
+          <div className="header-left-content">
+            <div className="brand-avatar-premium"><span>RF</span></div>
+            <div className="header-titles">
+              <span className="label-top-premium">FUSCODEV</span>
+              <h1 className="title-main-premium">Premium Store</h1>
+            </div>
           </div>
-        </div>
-        <motion.div whileTap={{ scale: 0.9 }} className="icon-glass-btn">
-          <Bell size={20} />
-          <span className="dot-indicator"></span>
-        </motion.div>
-      </header>
+          <motion.div 
+            whileTap={{ scale: 0.9 }} 
+            // ANIMACIÓN DE SACUDIDA (SHAKE)
+            animate={isNotificationsOpen ? {
+              rotate: [0, -20, 20, -20, 20, 0],
+              transition: { duration: 0.5 }
+            } : {}}
+            className="icon-glass-btn"
+            onClick={() => setIsNotificationsOpen(true)}
+          >
+            <Bell size={22} color="white" />
+            <span className="dot-indicator-vibrant"></span>
+          </motion.div>
+        </header>
+      )}
 
+      {/* --- ÁREA DE CONTENIDO PRINCIPAL --- */}
       <main className="main-content">
         <AnimatePresence mode="wait">
+          
           {activeTab === 'home' && (
-            <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              
-              {/* Banner Destacado / Promo */}
-              <motion.div 
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="glass"
-                style={{ 
-                  padding: '24px', 
-                  borderRadius: '28px', 
-                  background: 'var(--brand-gradient)',
-                  marginBottom: '25px',
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}
-              >
-                <div style={{ position: 'relative', zIndex: 2 }}>
-                  <h2 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '8px' }}>20% OFF</h2>
-                  <p style={{ fontSize: '14px', opacity: 0.9, maxWidth: '60%' }}>In your first purchase with the code FUSCO22</p>
-                </div>
-                {/* Círculo decorativo de fondo */}
-                <div style={{ position: 'absolute', right: '-20px', bottom: '-20px', width: '120px', height: '120px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }} />
-              </motion.div>
+            <HomeView 
+              products={PRODUCTS} 
+              onAddToCart={addToCart} 
+              onProductClick={setSelectedProduct} 
+              onGoToOffer={() => setActiveTab('offer')}
+              wishlist={wishlist} 
+              onToggleWishlist={toggleWishlist} 
+            />
+          )}
 
-              {/* Search */}
-              <div className="search-container">
-                <div className="search-input-wrapper">
-                  <Search size={18} className="icon-muted" />
-                  <input 
-                    type="text" 
-                    placeholder="What are you looking for?" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
+          {/* NUEVA VISTA DE BÚSQUEDA */}
+          {activeTab === 'search' && (
+            <div style={{ marginTop: '0px' }}> {/* Aseguramos margen 0 aquí también */}
+              <SearchView
+              key="search"
+              products={PRODUCTS} 
+              onAddToCart={addToCart} 
+              onProductClick={setSelectedProduct} 
+              /* ESTO ES LO QUE FALTA AÑADIR */
+              wishlist={wishlist} 
+              onToggleWishlist={toggleWishlist} 
+            />
+            </div>
+          )}
 
-              {/* Categories */}
-              <div className="categories-scroll scroll-hide">
-                {CATEGORIES.map(cat => (
-                  <button 
-                    key={cat} 
-                    onClick={() => setSelectedCat(cat)}
-                    className={`category-pill ${selectedCat === cat ? 'active' : 'glass'}`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
+          {activeTab === 'offer' && (
+            <Offer 
+              key="offer" 
+              onBack={() => setActiveTab('home')} 
+              onAddToCart={addToCart} 
+            />
+          )}
 
-              {/* Grid */}
-              <motion.div layout className="product-grid">
-                <AnimatePresence mode='popLayout'>
-                  {filteredProducts.map((p, i) => (
-                    <motion.div key={p.id} layout initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: i * 0.03 }}>
-                      <ProductCard product={p} onAddToCart={addToCart} />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </motion.div>
-            </motion.div>
+          {activeTab === 'orders' && (
+            <OrdersView 
+              key="orders" 
+              onSelectOrder={(order: any) => setSelectedOrder(order)} 
+            />
           )}
 
           {activeTab === 'profile' && <ProfileView key="profile" />}
+
+          {activeTab === 'checkout' && (
+            <Checkout 
+              key="checkout" 
+              cart={cart} 
+              onBack={() => setActiveTab('home')} 
+              onComplete={() => {setCart([]); setActiveTab('home');}} 
+            />
+          )}
+
         </AnimatePresence>
       </main>
 
-      {/* Navegación Premium Compacta - CORREGIDO: Estructura interna */}
-      <nav className="bottom-nav-compact glass">
-        <div className="nav-items-container">
+      {/* --- NAVEGACIÓN INFERIOR (Solo si no hay modales/detalles abiertos) --- */}
+      {activeTab !== 'checkout' && !selectedOrder && (
+        <nav className="bottom-nav-compact">
           <NavBtn icon={<Home size={22} />} active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
           <NavBtn icon={<Search size={22} />} active={activeTab === 'search'} onClick={() => setActiveTab('search')} />
           
-          <div className="cart-wrapper-compact">
-            <motion.button 
-              animate={isAdding ? { scale: [1, 1.3, 1], rotate: [0, 10, -10, 0] } : {}}
-              whileTap={{ scale: 0.85 }} 
-              onClick={() => setIsCartOpen(true)}
-              className="cart-btn-minimal"
-            >
-              <ShoppingBag size={22} />
-              {cart.length > 0 && (
-                <motion.span 
-                  initial={{ scale: 0 }} 
-                  animate={{ scale: 1 }} 
-                  className="cart-badge-minimal"
-                >
-                  {cart.length}
-                </motion.span>
-              )}
-            </motion.button>
+          <div className="floating-cart-anchor">
+            <button className="cart-btn-minimal" onClick={() => setIsCartOpen(true)}>
+              <ShoppingBag size={24} strokeWidth={2} />
+              
+              {/* BADGE ANIMADO ESTILO APPLE */}
+              <AnimatePresence>
+                {cartCount > 0 && (
+                  <motion.span
+                    key={cartCount} // El cambio de número dispara la animación
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                    className="cart-badge-premium"
+                  >
+                    {cartCount}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </button>
           </div>
 
           <NavBtn icon={<Package size={22} />} active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
           <NavBtn icon={<User size={22} />} active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
-        </div>
-      </nav>
+          <AnimatePresence>
+            {showAddedToast && (
+              <motion.div 
+                initial={{ y: -50, opacity: 0 }}
+                animate={{ y: 20, opacity: 1 }}
+                exit={{ y: -50, opacity: 0 }}
+                className="toast-added"
+              >
+                <ShoppingBag size={16} /> ¡Añadido al carrito!
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </nav>
+      )}
 
-      {/* MODAL DE CARRITO (CHECKOUT) */}
+      {/* --- CAPAS SUPERIORES (Z-INDEX ALTO) --- */}
+      <AnimatePresence>
+        {selectedOrder && (
+          <OrderDetail 
+            order={selectedOrder} 
+            onBack={() => setSelectedOrder(null)} 
+          />
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {isCartOpen && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setIsCartOpen(false)}
-              className="modal-overlay"
+          <div className="modal-wrapper-high">
+            <Cart 
+              isOpen={isCartOpen} 
+              onClose={() => setIsCartOpen(false)} 
+              cart={cart}
+              onUpdateQuantity={updateQuantity} // Asegúrate que aquí diga 'onUpdateQuantity'
+              onRemoveItem={removeFromCart}     // Asegúrate que aquí diga 'onRemoveItem'
+              onCheckout={() => { setIsCartOpen(false); setActiveTab('checkout'); }}
+              wishlist={wishlist} // <--- NUEVA PROP: Pasamos los IDs favoritos
+              products={PRODUCTS} // <--- NUEVA PROP: Necesitamos todos los productos para filtrar
+              onAddToCart={addToCart} // <--- NUEVA PROP: Para mover de Favoritos a Carrito
+              onToggleWishlist={toggleWishlist} // <--- NUEVA PROP: Para quitar de Favoritos
             />
-            <motion.div 
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="glass checkout-drawer"
-            >
-              <div className="drawer-handle" />
-              <div className="drawer-header">
-                <h2 className="font-display">Your Cart</h2>
-                <X onClick={() => setIsCartOpen(false)} size={20} />
-              </div>
-              
-              <div className="drawer-content scroll-hide">
-                {cart.length === 0 ? <p className="empty-msg">Tu carrito está vacío</p> : 
-                  cart.map((item, idx) => (
-                    <div key={idx} className="cart-item">
-                      <img src={item.image} alt={item.name} />
-                      <div className="item-info">
-                        <h4>{item.name}</h4>
-                        <p>${item.price}</p>
-                      </div>
-                    </div>
-                  ))
-                }
-              </div>
+          </div>
+        )}
+      </AnimatePresence>
 
-              <div className="drawer-footer">
-                <div className="total-row">
-                  <span>Total Amount</span>
-                  <span className="total-price">${cart.reduce((acc, curr) => acc + curr.price, 0)}</span>
-                </div>
-                <button className="btn-primary checkout-btn">Checkout Now</button>
-              </div>
-            </motion.div>
-          </>
+      <AnimatePresence>
+        {selectedProduct && (
+          <ProductDetail 
+            product={selectedProduct} 
+            onClose={() => setSelectedProduct(null)} 
+            onAddToCart={addToCart}
+            /* ESTO ES LO QUE FALTA */
+            wishlist={wishlist} 
+            onToggleWishlist={toggleWishlist} 
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isNotificationsOpen && (
+          <div className="modal-wrapper-high">
+            <NotificationsModal 
+              isOpen={isNotificationsOpen} 
+              onClose={() => setIsNotificationsOpen(false)} 
+            />
+          </div>
         )}
       </AnimatePresence>
     </div>
   );
 }
 
-function NavBtn({ icon, active, onClick }: any) {
+// --- SUB-COMPONENTE: VISTA HOME ---
+function HomeView({ products, onAddToCart, onProductClick, onGoToOffer, wishlist, onToggleWishlist }: any) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredProducts = useMemo(() => 
+    products.filter((p: any) => p.name.toLowerCase().includes(searchQuery.toLowerCase())), 
+    [searchQuery, products]
+  );
+
   return (
-    <button onClick={onClick} className="nav-item-btn">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      {/* BANNER PROMOCIONAL */}
       <motion.div 
-        animate={{ 
-          color: active ? 'var(--brand-primary)' : 'var(--text-muted)', 
-          y: active ? -4 : 0, // Sube un poco el icono si está activo
-          scale: active ? 1.15 : 1 
-        }}
-        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+        whileTap={{ scale: 0.96 }}
+        onClick={onGoToOffer} 
+        className="banner-promo-image-wrapper"
       >
-        {icon}
-      </motion.div>
-      {active && (
-        <motion.div 
-          layoutId="navdot" 
-          className="nav-active-dot" 
-          transition={{ type: "spring", bounce: 0.3, duration: 0.6 }}
+        <img 
+          src="https://images.unsplash.com/photo-1616410011236-7a42121dd981?q=80&w=2000" 
+          alt="Offer Banner"
+          className="banner-image"
         />
-      )}
-    </button>
+        <div className="banner-overlay">
+          <div className="promo-tag">LIMITED TIME</div>
+          <h2>Special Tech Deals</h2>
+          <p>Tap to discover <span>20% OFF</span></p>
+        </div>
+      </motion.div>
+
+      {/* BUSCADOR */}
+      <div className="search-container">
+        <div className="glass-search">
+          <SearchIcon size={18} className="icon-search-muted" />
+          <input 
+            type="text" 
+            placeholder="Search premium tech..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* GRID DE PRODUCTOS CORREGIDO */}
+      <div className="product-grid">
+        {filteredProducts.map((p: any) => (
+          <ProductCard 
+            key={p.id}
+            product={p} 
+            onClick={() => onProductClick(p)}
+            onAddToCart={onAddToCart} 
+            /* AHORA SÍ PASAMOS LAS PROPS */
+            wishlist={wishlist} 
+            onToggleWishlist={onToggleWishlist} 
+          />
+        ))}
+      </div>
+    </motion.div>
   );
 }
 
+// --- SUB-COMPONENTE: VISTA PERFIL ---
 function ProfileView() {
-  const options = [
-    { icon: <Package size={20} />, label: "Orders", color: "#6366f1" },
-    { icon: <CreditCard size={20} />, label: "Payments", color: "#fbbf24" },
-    { icon: <Settings size={20} />, label: "Settings", color: "#94a3b8" },
-  ];
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <div className="profile-header">
-        <div className="avatar-wrapper"><User size={40} /></div>
-        <h2 className="user-name-large">Riccardo Fusco</h2>
-        <p className="user-email">developer@fusco.com</p>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="profile-container-v3">
+      <div className="profile-header-premium">
+        <div className="avatar-large-glow">RF</div>
+        <h2>Riccardo Fusco</h2>
+        <p className="profile-sub">riccardofusco@ivoo.com</p>
       </div>
-      <div className="glass profile-menu">
-        {options.map(opt => (
-          <div key={opt.label} className="menu-item">
-            <div className="menu-item-content"><div className="menu-icon" style={{ backgroundColor: `${opt.color}20`, color: opt.color }}>{opt.icon}</div><span>{opt.label}</span></div>
-            <ChevronRight size={18} className="icon-muted" />
-          </div>
-        ))}
+      <div className="profile-menu-glass">
+        <ProfileMenuItem icon={<User size={20}/>} label="Información Personal" />
+        <ProfileMenuItem icon={<CreditCard size={20}/>} label="Métodos de Pago" />
+        <ProfileMenuItem icon={<Settings size={20}/>} label="Configuración" />
+        <ProfileMenuItem icon={<LogOut size={20}/>} label="Cerrar Sesión" isLast />
       </div>
-      <button className="logout-btn glass"><LogOut size={20} /> Sign Out</button>
     </motion.div>
+  );
+}
+
+function ProfileMenuItem({ icon, label, isLast }: any) {
+  return (
+    <div className={`menu-item-v3 ${isLast ? 'last' : ''}`}>
+      <div className="menu-item-left">
+        <span className="menu-icon-v3">{icon}</span>
+        <span>{label}</span>
+      </div>
+    </div>
+  );
+}
+
+// --- COMPONENTE AUXILIAR: BOTÓN NAV ---
+function NavBtn({ icon, active, onClick }: any) {
+  return (
+    <button onClick={onClick} className="nav-item-btn">
+      <AnimatePresence>
+        {active && (
+          <motion.div 
+            layoutId="activeBackground" 
+            className="nav-active-glass-bg" 
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          />
+        )}
+      </AnimatePresence>
+      <div className="nav-icon-wrapper">
+        <motion.div 
+          animate={{ 
+            color: active ? '#fff' : 'rgba(255,255,255,0.4)', 
+            scale: active ? 1.15 : 1 
+          }}
+        >
+          {icon}
+        </motion.div>
+      </div>
+    </button>
   );
 }

@@ -1,38 +1,80 @@
 import React from 'react';
-import { ShoppingBag, Heart } from 'lucide-react';
+import { ShoppingBag, Heart, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export function ProductCard({ product, onAddToCart }: any) {
+// Recibimos wishlist y onToggleWishlist como props
+export function ProductCard({ product, onAddToCart, onClick, wishlist, onToggleWishlist }: any) {
+  
+  // Verificamos si este producto está en nuestra lista de favoritos global
+  const isFavorite = wishlist?.includes(product.id);
+
   return (
     <motion.div 
-      className="premium-card glass"
-      whileTap={{ scale: 0.97 }}
-      style={{ display: 'flex', flexDirection: 'column', height: '100%', borderRadius: '24px', overflow: 'hidden' }}
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileTap={{ scale: 0.96 }}
+      onClick={onClick}
+      className="product-card-premium glass"
     >
-      <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', overflow: 'hidden' }}>
-        <img 
+      {/* Contenedor de Imagen */}
+      <div className="card-image-container">
+        <motion.img 
+          whileHover={{ scale: 1.1 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           src={product.image} 
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+          alt={product.name}
+          className="product-image"
         />
-        <button className="glass" style={{ position: 'absolute', top: '12px', right: '12px', border: 'none', borderRadius: '50%', padding: '8px' }}>
-          <Heart size={16} color="white" />
-        </button>
+        <div className="card-overlay-gradient" />
+        
+        {/* BOTÓN DE FAVORITO CORREGIDO */}
+        <motion.button 
+          whileTap={{ scale: 0.8 }}
+          className="wishlist-btn glass" 
+          onClick={(e) => {
+            e.stopPropagation(); // IMPORTANTE: Evita que se abra el detalle
+            onToggleWishlist(product.id);
+          }}
+        >
+          <Heart 
+            size={16} 
+            /* Si es favorito: Rojo y Relleno. Si no: Blanco y sin relleno */
+            color={isFavorite ? "#ff3b30" : "#fff"} 
+            fill={isFavorite ? "#ff3b30" : "none"} 
+            style={{ transition: 'all 0.3s ease' }}
+          />
+        </motion.button>
+
+        <div className="rating-badge glass">
+          <Star size={10} fill="var(--accent-gold)" color="var(--accent-gold)" />
+          <span>4.8</span>
+        </div>
       </div>
       
-      <div style={{ padding: '14px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-        <div>
-          <h3 className="font-display" style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px' }}>{product.name}</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{product.category}</p>
+      {/* Contenido de Texto */}
+      <div className="card-info">
+        <div className="info-header">
+          <p className="product-cat-label">{product.category}</p>
+          <h3 className="product-name-label">{product.name}</h3>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
-          <span style={{ fontWeight: 'bold', color: 'var(--accent-gold)' }}>${product.price}</span>
+
+        <div className="card-footer-price">
+          <div className="price-tag">
+            <span className="currency">$</span>
+            <span className="amount">{product.price}</span>
+          </div>
+          
           <motion.button 
-            whileTap={{ scale: 0.8 }}
-            onClick={() => onAddToCart(product)}
-            className="btn-brand" 
-            style={{ width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToCart(product);
+            }}
+            className="add-to-cart-vibrant"
           >
-            <ShoppingBag size={16} />
+            <ShoppingBag size={18} />
           </motion.button>
         </div>
       </div>
